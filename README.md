@@ -7,7 +7,9 @@ You can use the **Scaffold Exercise** skill to generate the boilerplate for any 
 
 1. **Pick an exercise** from the table below.
 2. **Open the folder** (e.g., `01-llm-eval-harness`).
-3. **Ask the Agent**: "Scaffold this exercise" or "Scaffold the exercise in 01-llm-eval-harness".
+3. **Ask the Agent**: "Find a dataset for this exercise" or "Get data for 01-llm-eval-harness".
+   - The agent will use the `data` skill to find and download a suitable dataset.
+4. **Ask the Agent**: "Scaffold this exercise" or "Scaffold the exercise in 01-llm-eval-harness".
    - The agent will use the `scaffold-exercise` skill to generate the code structure, dependencies, and instructions.
 
 ## AI Engineering Learning Roadmap (Prioritized)
