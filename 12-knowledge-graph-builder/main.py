@@ -1,0 +1,5 @@
+def main():
+    print("Hello from 12-knowledge-graph-builder!")
+
+if __name__ == "__main__":
+    main()
