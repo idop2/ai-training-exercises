@@ -18,43 +18,93 @@ console = Console()
 
 async def run_llm(prompt: str) -> str:
     """
-    TODO: Implement this function to call an LLM (e.g., OpenAI).
-    
-    1. Initialize AsyncOpenAI client (use os.getenv("OPENAI_API_KEY"))
-    2. Call chat.completions.create with the prompt
-    3. Return the content string
+    Calls an LLM (OpenAI) with the provided prompt.
     """
-    # client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    raise NotImplementedError("Step 1: Implement the LLM API call in run_llm()")
+    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = await client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content.strip()
 
-def score_result(case: TestCase, actual_output: str) -> TestResult:
+async def score_result(case: TestCase, actual_output: str) -> TestResult:
     """
-    TODO: Implement scoring logic.
+    Scores the actual output against the expected output using the specified metric.
+    """
+    passed = False
+    score = 0.0
+    reason = "No expected output provided"
+
+    if not case.expected_output:
+        return TestResult(case=case, actual_output=actual_output, passed=passed, score=score, reason=reason)
+
+    expected = case.expected_output.strip().lower()
+    actual = actual_output.strip().lower()
+
+    if case.metric == "exact_match":
+        if actual == expected:
+            passed = True
+            score = 1.0
+            reason = "Exact match"
+        else:
+            reason = f"Expected '{case.expected_output}', got '{actual_output}'"
     
-    1. Check for exact match (case-insensitive)
-    2. (Bonus) Implement an 'LLM Judge' that asks the LLM if the answer is correct
-    """
-    raise NotImplementedError("Step 2: Implement scoring logic in score_result()")
+    elif case.metric == "contains":
+        if expected in actual:
+            passed = True
+            score = 1.0
+            reason = f"Output contains '{case.expected_output}'"
+        else:
+            reason = f"Output does not contain '{case.expected_output}'"
+            
+    elif case.metric == "llm_judge":
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        prompt = f"""
+        You are an impartial judge. Grade the accuracy of the following AI response based on the expected output.
+        
+        Input: {case.input}
+        Expected Output: {case.expected_output}
+        Actual AI Response: {actual_output}
+        
+        Is the AI response correct and accurate according to the expected output? 
+        Answer with only 'YES' or 'NO', followed by a brief reason.
+        """
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0
+        )
+        judge_output = response.choices[0].message.content.strip()
+        if judge_output.upper().startswith("YES"):
+            passed = True
+            score = 1.0
+        reason = f"LLM Judge: {judge_output}"
+
+    return TestResult(
+        case=case,
+        actual_output=actual_output,
+        passed=passed,
+        score=score,
+        reason=reason
+    )
 
 async def run_evals(test_cases: List[TestCase]):
     """
-    Runs the evaluation loop.
+    Runs the evaluation loop in parallel.
     """
-    results: List[TestResult] = []
-    
-    console.print(f"[bold blue]Running {len(test_cases)} tests...[/bold blue]")
+    console.print(f"[bold blue]Running {len(test_cases)} tests in parallel...[/bold blue]")
 
-    # TODO: Run these in parallel using asyncio.gather for better performance
-    for case in test_cases:
+    async def _run_and_score(case: TestCase) -> TestResult:
         actual_output = await run_llm(case.input)
-        result = score_result(case, actual_output)
-        results.append(result)
+        result = await score_result(case, actual_output)
         
-        # Print immediate feedback
         status_color = "green" if result.passed else "red"
         console.print(f"[{status_color}]{'PASS' if result.passed else 'FAIL'}[/{status_color}]: {case.input[:50]}...")
+        return result
 
-    return results
+    # Run tests in parallel
+    results = await asyncio.gather(*[_run_and_score(case) for case in test_cases])
+    return list(results)
 
 def print_report(results: List[TestResult]):
     """

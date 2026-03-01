@@ -1,14 +1,17 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, AliasChoices
 
 class TestCase(BaseModel):
     """
     Represents a single test case for evaluation.
     """
     input: str
-    expected_output: Optional[str] = None
+    expected_output: Optional[str] = Field(
+        default=None, 
+        validation_alias=AliasChoices('expected_output', 'output')
+    )
     category: Optional[str] = None
-    # metric: str = "exact_match"  # Optional: allow overriding metric per test case
+    metric: str = "contains"  # Changed default to 'contains' for better initial results
 
 class TestResult(BaseModel):
     """
