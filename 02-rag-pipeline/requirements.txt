@@ -1,7 +1,0 @@
-typer
-pydantic
-openai
-numpy
-python-dotenv
-rich
-pytest
